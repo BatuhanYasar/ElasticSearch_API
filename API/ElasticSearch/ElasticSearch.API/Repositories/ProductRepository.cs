@@ -1,17 +1,17 @@
 ﻿using ElasticSearch.API.DTOs;
 using ElasticSearch.API.Models;
-using Nest;
 using System.Collections.Immutable;
+using Elastic.Clients.Elasticsearch;
 
 namespace ElasticSearch.API.Repositories
 {
     public class ProductRepository
     {
-        private readonly ElasticClient _client;
+        private readonly ElasticsearchClient _client;
 
         private const string indexName = "products"; // sürekli products yazmak kafa karıştırıcı olabilir diyerek bir string olusturduk. 
 
-        public ProductRepository(ElasticClient client)
+        public ProductRepository(ElasticsearchClient client)
         {
             _client = client;
         }
@@ -23,17 +23,19 @@ namespace ElasticSearch.API.Repositories
         {
             newProduct.Created = DateTime.Now;
 
-            var response = await _client.IndexAsync(newProduct, x => x.Index("products").Id(Guid.NewGuid().ToString()));
+            var response = await _client.IndexAsync(newProduct, x => x.Index(indexName));
             //  "-" _client üzerinden yeni ürünü Elasticsearch dizinine (index) kaydetmek için asenkron bir işlem başlatır. Bu işlem sonucu response değişkenine atanır.
 
             // .Id(Guid.NewGuid().ToString()) ile Id yi kendimiz atıyoruz
 
             // products adlı tabloya kaydediyorum.
             // IndexAsync --> aslında create yerine geçer.
-
+            
 
             //fast fail
-            if (!response.IsValid) return null;
+            if (!response.IsSuccess()) return null;
+            // IsSuccess() metodumuz var artık.
+
             newProduct.Id = response.Id;
 
             return newProduct;
@@ -65,7 +67,7 @@ namespace ElasticSearch.API.Repositories
             var response = await _client.GetAsync<Product>(id, x => x.Index(indexName));
 
 
-            if (!response.IsValid) 
+            if (!response.IsSuccess()) 
                 return null;
 
             response.Source.Id = response.Id;
@@ -75,9 +77,9 @@ namespace ElasticSearch.API.Repositories
         //id girip güncelliyoruz.
         public async Task<bool> UpdateAsync(ProductUpdateDto updateProduct)
         {
-            var response = await _client.UpdateAsync<Product, ProductUpdateDto>(updateProduct.Id, x => x.Index(indexName).Doc(updateProduct));
+            var response = await _client.UpdateAsync<Product, ProductUpdateDto>(indexName,updateProduct.Id,x=>x.Doc(updateProduct));
 
-            return response.IsValid;
+            return response.IsSuccess();
         }
 
 
@@ -87,7 +89,7 @@ namespace ElasticSearch.API.Repositories
         {
             var response = await _client.DeleteAsync<Product>(id,x => x.Index(indexName));
 
-            return response.IsValid;
+            return response;
         }
 
          

@@ -1,11 +1,11 @@
 ﻿using ElasticSearch.API.DTOs;
-using Nest;
+
 
 namespace ElasticSearch.API.Models
 {
     public class Product
     {
-        [PropertyName("id")]
+        
         public string Id { get; set; } = null!;
 
         public string Name { get; set; } = null!;
